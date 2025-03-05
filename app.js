@@ -5,6 +5,7 @@ const app = express();
 const port = 3000;
 
 app.use(express.static('public'));
+app.use(express.static('cards'));
 app.use(express.json({ limit: '50mb' }));
 
 app.get('/', (req, res) => {
@@ -21,17 +22,17 @@ app.post('/save-card', (req, res) => {
     try {
         const imageBuffer = Buffer.from(imageData.split(',')[1], 'base64');
         const imageName = `card_${Date.now()}.png`;
-        const imagePath = path.join(__dirname, 'public', 'cards', imageName);
+        const imagePath = path.join(__dirname, 'cards', imageName);
         const metadata = {
             blurRegions,
             frequencyCategory,
             imagePath: `/cards/${imageName}`
         };
-        const metadataPath = path.join(__dirname, 'public', 'cards', `${imageName}.json`);
+        const metadataPath = path.join(__dirname, 'cards', `${imageName}.json`);
 
         // Ensure the cards directory exists
-        if (!fs.existsSync(path.join(__dirname, 'public', 'cards'))) {
-            fs.mkdirSync(path.join(__dirname, 'public', 'cards'));
+        if (!fs.existsSync(path.join(__dirname, 'cards'))) {
+            fs.mkdirSync(path.join(__dirname, 'cards'));
         }
 
         fs.writeFile(imagePath, imageBuffer, (err) => {
@@ -55,7 +56,7 @@ app.post('/save-card', (req, res) => {
 });
 
 app.get('/get-cards', (req, res) => {
-    const cardsDir = path.join(__dirname, 'public', 'cards');
+    const cardsDir = path.join(__dirname, 'cards');
     console.log('Reading cards from directory:', cardsDir);
     fs.readdir(cardsDir, (err, files) => {
         if (err) {
@@ -64,13 +65,21 @@ app.get('/get-cards', (req, res) => {
         }
 
         const cards = files
-            .filter(file => file.endsWith('.json'))
+            .filter(file => file.endsWith('.png'))
             .map(file => {
-                const filePath = path.join(cardsDir, file);
-                console.log('Reading card file:', filePath);
-                const card = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-                return card;
-            });
+                const imagePath = path.join(cardsDir, file);
+                const metadataPath = path.join(cardsDir, `${file}.json`);
+                console.log('Reading card file:', imagePath);
+                try {
+                    const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+                    metadata.imagePath = `/cards/${file}`;
+                    return metadata;
+                } catch (readErr) {
+                    console.error('Error reading card metadata file:', readErr);
+                    return null;
+                }
+            })
+            .filter(card => card !== null);
 
         console.log('Cards fetched:', cards);
         res.json(cards);
@@ -79,7 +88,7 @@ app.get('/get-cards', (req, res) => {
 
 app.post('/update-card', (req, res) => {
     const card = req.body;
-    const metadataPath = path.join(__dirname, 'public', 'cards', `${path.basename(card.imagePath)}.json`);
+    const metadataPath = path.join(__dirname, 'cards', `${path.basename(card.imagePath)}.json`);
 
     fs.writeFile(metadataPath, JSON.stringify(card), (err) => {
         if (err) {

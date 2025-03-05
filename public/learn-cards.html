@@ -18,6 +18,9 @@
         async function fetchCards() {
             try {
                 const response = await fetch('/get-cards');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 cards = await response.json();
                 displayCard();
             } catch (error) {
