@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Card</title>
+    <style>
+        #generated-image {
+            border: 1px solid #000;
+            display: none;
+            position: relative;
+        }
+        .blur-region {
+            position: absolute;
+            border: 2px dashed red;
+        }
+        #generated-image-container {
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <h1>Create a New Card</h1>
+    <form id="create-card-form">
+        <label for="card-type">Card Type:</label>
+        <select id="card-type" name="card-type">
+            <option value="text" selected>Text</option>
+            <option value="image">Image</option>
+        </select>
+        <div id="text-card-input">
+            <label for="text-content">Text Content:</label>
+            <textarea id="text-content" name="text-content"></textarea>
+            <button type="button" id="generate-image-btn">Generate Image</button>
+        </div>
+        <div id="image-card-input" style="display: none;">
+            <label for="image-content">Image Content:</label>
+            <input type="file" id="image-content" name="image-content">
+        </div>
+        <div id="generated-image-container">
+            <img id="generated-image" src="" alt="Generated Image">
+        </div>
+        <button type="button" id="clear-blur-regions-btn">Clear Blur Regions</button>
+        <button type="submit">Create Card</button>
+    </form>
+    <script>
+        document.getElementById('card-type').addEventListener('change', function() {
+            const textCardInput = document.getElementById('text-card-input');
+            const imageCardInput = document.getElementById('image-card-input');
+            if (this.value === 'text') {
+                textCardInput.style.display = 'block';
+                imageCardInput.style.display = 'none';
+            } else {
+                textCardInput.style.display = 'none';
+                imageCardInput.style.display = 'block';
+            }
+        });
+
+        document.getElementById('generate-image-btn').addEventListener('click', function() {
+            const textContent = document.getElementById('text-content').value;
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 400;
+            canvas.height = 300;
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#000';
+            ctx.font = '20px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(textContent, canvas.width / 2, canvas.height / 2);
+            const dataURL = canvas.toDataURL();
+            const generatedImage = document.getElementById('generated-image');
+            generatedImage.src = dataURL;
+            generatedImage.style.display = 'block';
+        });
+
+        document.getElementById('image-content').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const generatedImage = document.getElementById('generated-image');
+                generatedImage.src = e.target.result;
+                generatedImage.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        });
+
+        document.getElementById('generated-image').addEventListener('click', function(event) {
+            const rect = this.getBoundingClientRect();
+            const blurRegionSize = 50;
+            const x = event.clientX - rect.left - blurRegionSize / 2;
+            const y = event.clientY - rect.top - blurRegionSize / 2;
+            const blurRegion = document.createElement('div');
+            blurRegion.className = 'blur-region';
+            blurRegion.style.left = `${x}px`;
+            blurRegion.style.top = `${y}px`;
+            blurRegion.style.width = `${blurRegionSize}px`;
+            blurRegion.style.height = `${blurRegionSize}px`;
+            document.getElementById('generated-image-container').appendChild(blurRegion);
+        });
+
+        document.getElementById('clear-blur-regions-btn').addEventListener('click', function() {
+            const blurRegions = document.getElementsByClassName('blur-region');
+            while (blurRegions.length > 0) {
+                blurRegions[0].parentNode.removeChild(blurRegions[0]);
+            }
+        });
+
+        document.getElementById('create-card-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const generatedImage = document.getElementById('generated-image').src;
+            const blurRegions = Array.from(document.getElementsByClassName('blur-region')).map(region => ({
+                left: region.style.left,
+                top: region.style.top,
+                width: region.style.width,
+                height: region.style.height
+            }));
+            const frequencyCategory = 0; // Initial frequency category
+
+            console.log('Submitting card data');
+            console.log('Image data length:', generatedImage.length);
+            console.log('Blur regions:', blurRegions);
+            console.log('Frequency category:', frequencyCategory);
+
+            fetch('/save-card', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    imageData: generatedImage,
+                    blurRegions,
+                    frequencyCategory
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.details || 'Unknown error'); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert(data.message);
+                // Clear the shown image and blur regions
+                document.getElementById('generated-image').style.display = 'none';
+                document.getElementById('generated-image').src = '';
+                document.getElementById('clear-blur-regions-btn').click();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving card: ' + error.message);
+            });
+        });
+
+        // Test the create-test-folder endpoint
+        fetch('/create-test-folder', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log(data.message);
+        })
+        .catch(error => {
+            console.error('Error creating test folder:', error);
+        });
+    </script>
+</body>
+</html>

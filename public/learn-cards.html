@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learn Cards</title>
+</head>
+<body>
+    <h1>Learn Cards</h1>
+    <div id="card-container">
+        <!-- Cards will be dynamically loaded here -->
+    </div>
+    <button id="next-card-btn">Next Card</button>
+    <script>
+        let cards = [];
+        let currentIndex = 0;
+
+        async function fetchCards() {
+            try {
+                const response = await fetch('/get-cards');
+                cards = await response.json();
+                displayCard();
+            } catch (error) {
+                console.error('Error fetching cards:', error);
+            }
+        }
+
+        function displayCard() {
+            if (cards.length === 0) {
+                document.getElementById('card-container').innerHTML = '<p>No cards available</p>';
+                return;
+            }
+
+            const card = cards[currentIndex];
+            const cardContainer = document.getElementById('card-container');
+            cardContainer.innerHTML = `
+                <img src="${card.imagePath}" alt="Card Image">
+                <div>
+                    <button onclick="updateFrequency(${currentIndex}, true)">Correct</button>
+                    <button onclick="updateFrequency(${currentIndex}, false)">Incorrect</button>
+                </div>
+            `;
+        }
+
+        async function updateFrequency(index, isCorrect) {
+            const card = cards[index];
+            if (isCorrect) {
+                card.frequencyCategory++;
+            } else {
+                card.frequencyCategory = 0;
+            }
+
+            try {
+                await fetch('/update-card', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(card)
+                });
+                nextCard();
+            } catch (error) {
+                console.error('Error updating card:', error);
+            }
+        }
+
+        function nextCard() {
+            currentIndex = (currentIndex + 1) % cards.length;
+            displayCard();
+        }
+
+        document.getElementById('next-card-btn').addEventListener('click', nextCard);
+
+        fetchCards();
+    </script>
+</body>
+</html>
