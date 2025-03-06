@@ -12,7 +12,7 @@
         }
         .blur-region {
             position: absolute;
-            border: 2px dashed red;
+            background: rgba(255, 255, 255, 0.8);
         }
         #generated-image-container {
             position: relative;
@@ -90,14 +90,31 @@
             const blurRegionSize = 50;
             const x = event.clientX - rect.left - blurRegionSize / 2;
             const y = event.clientY - rect.top - blurRegionSize / 2;
-            const blurRegion = document.createElement('div');
+            const blurRegion = document.createElement('canvas');
             blurRegion.className = 'blur-region';
             blurRegion.style.left = `${x}px`;
             blurRegion.style.top = `${y}px`;
             blurRegion.style.width = `${blurRegionSize}px`;
             blurRegion.style.height = `${blurRegionSize}px`;
+            blurRegion.width = blurRegionSize;
+            blurRegion.height = blurRegionSize;
+            addNoise(blurRegion);
             document.getElementById('generated-image-container').appendChild(blurRegion);
         });
+
+        function addNoise(canvas) {
+            const ctx = canvas.getContext('2d');
+            const blockSize = 10; // Size of each pixel block
+            for (let y = 0; y < canvas.height; y += blockSize) {
+                for (let x = 0; x < canvas.width; x += blockSize) {
+                    const red = Math.random() * 128 + 64; // Lower saturation
+                    const green = Math.random() * 128 + 64; // Lower saturation
+                    const blue = Math.random() * 128 + 64; // Lower saturation
+                    ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+                    ctx.fillRect(x, y, blockSize, blockSize);
+                }
+            }
+        }
 
         document.getElementById('clear-blur-regions-btn').addEventListener('click', function() {
             const blurRegions = document.getElementsByClassName('blur-region');
@@ -117,11 +134,6 @@
             }));
             const frequencyCategory = 0; // Initial frequency category
 
-            console.log('Submitting card data');
-            console.log('Image data length:', generatedImage.length);
-            console.log('Blur regions:', blurRegions);
-            console.log('Frequency category:', frequencyCategory);
-
             fetch('/save-card', {
                 method: 'POST',
                 headers: {
@@ -140,15 +152,13 @@
                 return response.json();
             })
             .then(data => {
-                alert(data.message);
                 // Clear the shown image and blur regions
                 document.getElementById('generated-image').style.display = 'none';
                 document.getElementById('generated-image').src = '';
                 document.getElementById('clear-blur-regions-btn').click();
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Error saving card: ' + error.message);
+                console.error('Error saving card:', error);
             });
         });
 

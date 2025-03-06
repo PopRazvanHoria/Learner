@@ -11,70 +11,70 @@
         <!-- Cards will be dynamically loaded here -->
     </div>
     <button id="next-card-btn">Next Card</button>
+    <button id="refresh-btn">Start Over</button>
+    <button id="delete-card-btn">Delete Card</button>
     <script>
-        let cards = [];
         let currentIndex = 0;
 
-        async function fetchCards() {
+        async function fetchCard(index) {
             try {
-                const response = await fetch('/get-cards');
+                const response = await fetch(`/get-card/${index}`);
+                console.log(`Fetching card at index ${index}`); // Debugging line
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                cards = await response.json();
-                displayCard();
+                const card = await response.json();
+                displayCard(card);
             } catch (error) {
-                console.error('Error fetching cards:', error);
+                console.error('Error fetching card:', error);
+                document.getElementById('card-container').innerHTML = '<p>No more cards available</p>';
             }
         }
 
-        function displayCard() {
-            if (cards.length === 0) {
-                document.getElementById('card-container').innerHTML = '<p>No cards available</p>';
-                return;
-            }
-
-            const card = cards[currentIndex];
+        function displayCard(card) {
             const cardContainer = document.getElementById('card-container');
+            console.log('Displaying card:', card); // Debugging line
             cardContainer.innerHTML = `
-                <img src="${card.imagePath}" alt="Card Image">
-                <div>
-                    <button onclick="updateFrequency(${currentIndex}, true)">Correct</button>
-                    <button onclick="updateFrequency(${currentIndex}, false)">Incorrect</button>
-                </div>
+                <img src="${card.imagePath}" alt="Card Image" onerror="handleImageError(this)">
             `;
         }
 
-        async function updateFrequency(index, isCorrect) {
-            const card = cards[index];
-            if (isCorrect) {
-                card.frequencyCategory++;
-            } else {
-                card.frequencyCategory = 0;
-            }
+        function handleImageError(img) {
+            console.error('Error loading image:', img.src); // Debugging line
+            img.src = 'placeholder.png'; // Fallback image
+        }
 
+        async function deleteCard(index) {
             try {
-                await fetch('/update-card', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(card)
+                const response = await fetch(`/delete-card/${index}`, {
+                    method: 'DELETE'
                 });
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                console.log(result.message); // Debugging line
                 nextCard();
             } catch (error) {
-                console.error('Error updating card:', error);
+                console.error('Error deleting card:', error);
             }
         }
 
         function nextCard() {
-            currentIndex = (currentIndex + 1) % cards.length;
-            displayCard();
+            currentIndex++;
+            fetchCard(currentIndex);
+        }
+
+        function refreshCards() {
+            currentIndex = 0;
+            fetchCard(currentIndex);
         }
 
         document.getElementById('next-card-btn').addEventListener('click', nextCard);
+        document.getElementById('refresh-btn').addEventListener('click', refreshCards);
+        document.getElementById('delete-card-btn').addEventListener('click', () => deleteCard(currentIndex));
 
-        fetchCards();
+        fetchCard(currentIndex);
     </script>
 </body>
 </html>

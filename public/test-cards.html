@@ -4,14 +4,87 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Test on Cards</title>
+    <style>
+        .blur-region {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.8);
+        }
+        #card-container {
+            position: relative;
+        }
+    </style>
 </head>
 <body>
     <h1>Test on Cards</h1>
     <div id="card-container">
         <!-- Cards will be dynamically loaded here -->
     </div>
+    <button id="next-card-btn">Next Card</button>
     <script>
-        // Fetch and display cards for testing
+        let currentIndex = 0;
+
+        async function fetchCard(index) {
+            try {
+                const response = await fetch(`/get-card/${index}`);
+                console.log(`Fetching card at index ${index}`); // Debugging line
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const card = await response.json();
+                displayCard(card);
+            } catch (error) {
+                console.error('Error fetching card:', error);
+                document.getElementById('card-container').innerHTML = '<p>No more cards available</p>';
+            }
+        }
+
+        function displayCard(card) {
+            const cardContainer = document.getElementById('card-container');
+            console.log('Displaying card:', card); // Debugging line
+            cardContainer.innerHTML = `
+                <img src="${card.imagePath}" alt="Card Image" onerror="handleImageError(this)">
+            `;
+            card.blurRegions.forEach(region => {
+                const blurRegion = document.createElement('canvas');
+                blurRegion.className = 'blur-region';
+                blurRegion.style.left = region.left;
+                blurRegion.style.top = region.top;
+                blurRegion.style.width = region.width;
+                blurRegion.style.height = region.height;
+                blurRegion.width = parseInt(region.width);
+                blurRegion.height = parseInt(region.height);
+                addNoise(blurRegion);
+                cardContainer.appendChild(blurRegion);
+            });
+        }
+
+        function addNoise(canvas) {
+            const ctx = canvas.getContext('2d');
+            const blockSize = 10; // Size of each pixel block
+            for (let y = 0; y < canvas.height; y += blockSize) {
+                for (let x = 0; x < canvas.width; x += blockSize) {
+                    const red = Math.random() * 128 + 64; // Lower saturation
+                    const green = Math.random() * 128 + 64; // Lower saturation
+                    const blue = Math.random() * 128 + 64; // Lower saturation
+                    ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+                    ctx.fillRect(x, y, blockSize, blockSize);
+                }
+            }
+        }
+
+        function handleImageError(img) {
+            console.error('Error loading image:', img.src); // Debugging line
+            img.src = 'placeholder.png'; // Fallback image
+        }
+
+        function nextCard() {
+            currentIndex++;
+            fetchCard(currentIndex);
+        }
+
+        document.getElementById('next-card-btn').addEventListener('click', nextCard);
+
+        fetchCard(currentIndex);
     </script>
 </body>
 </html>

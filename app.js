@@ -1,18 +1,21 @@
 const express = require('express');
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
 const app = express();
 const port = 3000;
 
-app.use(express.static('public'));
-app.use(express.static('cards'));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/cards', (req, res, next) => {
+    console.log(`Serving card image: ${req.url}`); // Debugging line
+    next();
+}, express.static(path.join(__dirname, 'cards')));
 app.use(express.json({ limit: '50mb' }));
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.post('/save-card', (req, res) => {
+app.post('/save-card', async (req, res) => {
     const { imageData, blurRegions, frequencyCategory } = req.body;
     console.log('Received request to save card');
     console.log('Image data length:', imageData.length);
@@ -31,24 +34,12 @@ app.post('/save-card', (req, res) => {
         const metadataPath = path.join(__dirname, 'cards', `${imageName}.json`);
 
         // Ensure the cards directory exists
-        if (!fs.existsSync(path.join(__dirname, 'cards'))) {
-            fs.mkdirSync(path.join(__dirname, 'cards'));
-        }
+        await fs.mkdir(path.join(__dirname, 'cards'), { recursive: true });
 
-        fs.writeFile(imagePath, imageBuffer, (err) => {
-            if (err) {
-                console.error('Error saving image:', err);
-                return res.status(500).json({ error: 'Error saving image', details: err.message });
-            }
-            fs.writeFile(metadataPath, JSON.stringify(metadata), (err) => {
-                if (err) {
-                    console.error('Error saving metadata:', err);
-                    return res.status(500).json({ error: 'Error saving metadata', details: err.message });
-                }
-                console.log('Card saved successfully:', imageName);
-                res.json({ message: 'Card saved successfully' });
-            });
-        });
+        await fs.writeFile(imagePath, imageBuffer);
+        await fs.writeFile(metadataPath, JSON.stringify(metadata));
+        console.log('Card saved successfully:', imageName);
+        res.json({ message: 'Card saved successfully' });
     } catch (error) {
         console.error('Unexpected error:', error);
         res.status(500).json({ error: 'Unexpected error', details: error.message });
@@ -86,6 +77,34 @@ app.get('/get-cards', (req, res) => {
     });
 });
 
+app.get('/get-card/:index', (req, res) => {
+    const cardsDir = path.join(__dirname, 'cards');
+    fs.readdir(cardsDir, (err, files) => {
+        if (err) {
+            console.error('Error reading cards directory:', err);
+            return res.status(500).json({ error: 'Error reading cards directory', details: err.message });
+        }
+
+        const cardFiles = files.filter(file => file.endsWith('.png'));
+        const index = parseInt(req.params.index, 10);
+
+        if (index < 0 || index >= cardFiles.length) {
+            return res.status(404).json({ error: 'Card not found' });
+        }
+
+        const file = cardFiles[index];
+        const metadataPath = path.join(cardsDir, `${file}.json`);
+        try {
+            const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
+            metadata.imagePath = `/cards/${file}`;
+            res.json(metadata);
+        } catch (readErr) {
+            console.error('Error reading card metadata file:', readErr);
+            res.status(500).json({ error: 'Error reading card metadata file', details: readErr.message });
+        }
+    });
+});
+
 app.post('/update-card', (req, res) => {
     const card = req.body;
     const metadataPath = path.join(__dirname, 'cards', `${path.basename(card.imagePath)}.json`);
@@ -115,6 +134,43 @@ app.post('/create-test-folder', (req, res) => {
         }
         console.log('Test file created successfully');
         res.json({ message: 'Test file created successfully' });
+    });
+});
+
+app.delete('/delete-card/:index', (req, res) => {
+    const cardsDir = path.join(__dirname, 'cards');
+    fs.readdir(cardsDir, (err, files) => {
+        if (err) {
+            console.error('Error reading cards directory:', err);
+            return res.status(500).json({ error: 'Error reading cards directory', details: err.message });
+        }
+
+        const cardFiles = files.filter(file => file.endsWith('.png'));
+        const index = parseInt(req.params.index, 10);
+
+        if (index < 0 || index >= cardFiles.length) {
+            return res.status(404).json({ error: 'Card not found' });
+        }
+
+        const file = cardFiles[index];
+        const imagePath = path.join(cardsDir, file);
+        const metadataPath = path.join(cardsDir, `${file}.json`);
+
+        fs.unlink(imagePath, (err) => {
+            if (err) {
+                console.error('Error deleting card image:', err);
+                return res.status(500).json({ error: 'Error deleting card image', details: err.message });
+            }
+
+            fs.unlink(metadataPath, (err) => {
+                if (err) {
+                    console.error('Error deleting card metadata:', err);
+                    return res.status(500).json({ error: 'Error deleting card metadata', details: err.message });
+                }
+
+                res.json({ message: 'Card deleted successfully' });
+            });
+        });
     });
 });
 
