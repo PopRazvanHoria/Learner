@@ -28,6 +28,10 @@
             width: 200px;
             height: 200px;
             display: none; /* Initially hidden */
+            cursor: grab;
+        }
+        #clear-blur-regions-btn, #create-card-btn {
+            display: none; /* Initially hidden */
         }
     </style>
 </head>
@@ -53,19 +57,25 @@
         </div>
         <div class="slider-container" id="blur-width-container">
             <label for="blur-width">Blur Width:</label>
-            <input type="range" id="blur-width" name="blur-width" min="10" max="200" value="50">
-            <span id="blur-width-value">50</span>px
+            <input type="range" id="blur-width" name="blur-width" min="10" max="200" value="100">
+            <span id="blur-width-value">100</span>px
         </div>
         <div class="slider-container" id="blur-height-container">
             <label for="blur-height">Blur Height:</label>
-            <input type="range" id="blur-height" name="blur-height" min="10" max="200" value="50">
-            <span id="blur-height-value">50</span>px
+            <input type="range" id="blur-height" name="blur-height" min="10" max="200" value="24">
+            <span id="blur-height-value">24</span>px
         </div>
         <canvas id="blur-preview" width="200" height="200"></canvas>
         <button type="button" id="clear-blur-regions-btn">Clear Blur Regions</button>
-        <button type="submit">Create Card</button>
+        <button type="submit" id="create-card-btn">Create Card</button>
     </form>
     <script>
+        let isDragging = false;
+        let startX, startY;
+        let offsetX = 0, offsetY = 0;
+        let img = new Image();
+        let imgLoaded = false;
+
         document.getElementById('card-type').addEventListener('change', function() {
             const textCardInput = document.getElementById('text-card-input');
             const imageCardInput = document.getElementById('image-card-input');
@@ -107,7 +117,14 @@
             document.getElementById('blur-preview').style.display = 'block';
             document.getElementById('blur-width-container').style.display = 'block';
             document.getElementById('blur-height-container').style.display = 'block';
-            updateBlurPreview();
+            document.getElementById('clear-blur-regions-btn').style.display = 'block';
+            document.getElementById('create-card-btn').style.display = 'block';
+
+            img.src = dataURL;
+            img.onload = function() {
+                imgLoaded = true;
+                updateBlurPreview();
+            };
         });
 
         function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
@@ -149,7 +166,14 @@
                 document.getElementById('blur-preview').style.display = 'block';
                 document.getElementById('blur-width-container').style.display = 'block';
                 document.getElementById('blur-height-container').style.display = 'block';
-                updateBlurPreview();
+                document.getElementById('clear-blur-regions-btn').style.display = 'block';
+                document.getElementById('create-card-btn').style.display = 'block';
+
+                img.src = e.target.result;
+                img.onload = function() {
+                    imgLoaded = true;
+                    updateBlurPreview();
+                };
             };
             reader.readAsDataURL(file);
         });
@@ -180,6 +204,8 @@
         });
 
         function updateBlurPreview() {
+            if (!imgLoaded) return;
+
             const blurWidth = document.getElementById('blur-width').value;
             const blurHeight = document.getElementById('blur-height').value;
             const previewCanvas = document.getElementById('blur-preview');
@@ -190,33 +216,41 @@
             const startY = centerY - blurHeight / 2;
             ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
 
-            // Add a snippet of the created card as the background
-            const generatedImage = document.getElementById('generated-image');
-            if (generatedImage.src) {
-                const img = new Image();
-                img.src = generatedImage.src;
-                img.onload = function() {
-                    const snippetWidth = Math.min(img.width, previewCanvas.width);
-                    const snippetHeight = Math.min(img.height, previewCanvas.height);
-                    const snippetX = (img.width - snippetWidth) / 2;
-                    const snippetY = (img.height - snippetHeight) / 2;
-                    ctx.drawImage(img, snippetX, snippetY, snippetWidth, snippetHeight, 0, 0, previewCanvas.width, previewCanvas.height);
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-                    ctx.fillRect(startX, startY, blurWidth, blurHeight);
-                    ctx.strokeStyle = '#000';
-                    ctx.setLineDash([5, 3]);
-                    ctx.strokeRect(startX, startY, blurWidth, blurHeight);
-                };
-            } else {
-                // Add piglatin text as the background
-                ctx.fillStyle = '#000';
-                ctx.font = '16px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                const piglatinText = 'Igpay Atinlay Extextay'; // Example piglatin text
-                ctx.fillText(piglatinText, centerX, centerY);
-            }
+            const snippetWidth = Math.min(img.width, previewCanvas.width);
+            const snippetHeight = Math.min(img.height, previewCanvas.height);
+            const snippetX = Math.max(0, Math.min(img.width - snippetWidth, (img.width - snippetWidth) / 2 + offsetX));
+            const snippetY = Math.max(0, Math.min(img.height - snippetHeight, (img.height - snippetHeight) / 2 + offsetY));
+            ctx.drawImage(img, snippetX, snippetY, snippetWidth, snippetHeight, 0, 0, previewCanvas.width, previewCanvas.height);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillRect(startX, startY, blurWidth, blurHeight);
+            ctx.strokeStyle = '#000';
+            ctx.setLineDash([5, 3]);
+            ctx.strokeRect(startX, startY, blurWidth, blurHeight);
         }
+
+        document.getElementById('blur-preview').addEventListener('mousedown', function(event) {
+            isDragging = true;
+            startX = event.clientX;
+            startY = event.clientY;
+            this.style.cursor = 'grabbing';
+        });
+
+        document.addEventListener('mousemove', function(event) {
+            if (isDragging) {
+                const dx = event.clientX - startX;
+                const dy = event.clientY - startY;
+                offsetX -= dx;
+                offsetY -= dy;
+                startX = event.clientX;
+                startY = event.clientY;
+                requestAnimationFrame(updateBlurPreview);
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            isDragging = false;
+            document.getElementById('blur-preview').style.cursor = 'grab';
+        });
 
         document.getElementById('clear-blur-regions-btn').addEventListener('click', function() {
             const blurRegions = document.getElementsByClassName('blur-region');
