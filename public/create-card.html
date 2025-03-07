@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Card</title>
     <style>
+        /* Styles for the generated image and blur regions */
         #generated-image {
             border: 1px solid #000;
             display: none;
@@ -38,34 +39,42 @@
 <body>
     <h1>Create a New Card</h1>
     <form id="create-card-form">
+        <!-- Card type selection -->
         <label for="card-type">Card Type:</label>
         <select id="card-type" name="card-type">
             <option value="text" selected>Text</option>
             <option value="image">Image</option>
         </select>
+        <!-- Text card input section -->
         <div id="text-card-input">
             <label for="text-content">Text Content:</label>
             <textarea id="text-content" name="text-content"></textarea>
             <button type="button" id="generate-image-btn">Generate Image</button>
         </div>
+        <!-- Image card input section -->
         <div id="image-card-input" style="display: none;">
             <label for="image-content">Image Content:</label>
             <input type="file" id="image-content" name="image-content">
         </div>
+        <!-- Container for the generated image -->
         <div id="generated-image-container">
             <img id="generated-image" src="" alt="Generated Image">
         </div>
+        <!-- Blur width slider -->
         <div class="slider-container" id="blur-width-container">
             <label for="blur-width">Blur Width:</label>
             <input type="range" id="blur-width" name="blur-width" min="10" max="200" value="100">
             <span id="blur-width-value">100</span>px
         </div>
+        <!-- Blur height slider -->
         <div class="slider-container" id="blur-height-container">
             <label for="blur-height">Blur Height:</label>
             <input type="range" id="blur-height" name="blur-height" min="10" max="200" value="24">
             <span id="blur-height-value">24</span>px
         </div>
+        <!-- Canvas for blur preview -->
         <canvas id="blur-preview" width="200" height="200"></canvas>
+        <!-- Buttons for clearing blur regions and creating the card -->
         <button type="button" id="clear-blur-regions-btn">Clear Blur Regions</button>
         <button type="submit" id="create-card-btn">Create Card</button>
     </form>
@@ -76,6 +85,7 @@
         let img = new Image();
         let imgLoaded = false;
 
+        // Event listener for card type selection
         document.getElementById('card-type').addEventListener('change', function() {
             const textCardInput = document.getElementById('text-card-input');
             const imageCardInput = document.getElementById('image-card-input');
@@ -88,6 +98,7 @@
             }
         });
 
+        // Event listener for generating image from text content
         document.getElementById('generate-image-btn').addEventListener('click', function() {
             const textContent = document.getElementById('text-content').value;
             const canvas = document.createElement('canvas');
@@ -127,6 +138,7 @@
             };
         });
 
+        // Function to wrap text within the canvas
         function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
             const words = text.split(' ');
             let line = '';
@@ -154,6 +166,7 @@
             }
         }
 
+        // Event listener for image content selection
         document.getElementById('image-content').addEventListener('change', function(event) {
             const file = event.target.files[0];
             const reader = new FileReader();
@@ -178,12 +191,18 @@
             reader.readAsDataURL(file);
         });
 
+        // Event listener for adding blur regions on the generated image
         document.getElementById('generated-image').addEventListener('click', function(event) {
             const rect = this.getBoundingClientRect();
             const blurWidth = parseInt(document.getElementById('blur-width').value);
             const blurHeight = parseInt(document.getElementById('blur-height').value);
-            const x = event.clientX - rect.left - blurWidth / 2;
-            const y = event.clientY - rect.top - blurHeight / 2;
+            let x = event.clientX - rect.left - blurWidth / 2;
+            let y = event.clientY - rect.top - blurHeight / 2;
+
+            // Ensure the blur region is within the image boundaries
+            x = Math.max(0, Math.min(x, rect.width - blurWidth));
+            y = Math.max(0, Math.min(y, rect.height - blurHeight));
+
             const blurRegion = document.createElement('div');
             blurRegion.className = 'blur-region';
             blurRegion.style.left = `${x}px`;
@@ -193,16 +212,18 @@
             document.getElementById('generated-image-container').appendChild(blurRegion);
         });
 
+        // Event listeners for blur width and height sliders
         document.getElementById('blur-width').addEventListener('input', function() {
             document.getElementById('blur-width-value').textContent = this.value;
-            requestAnimationFrame(updateBlurPreview);
+            updateBlurPreview();
         });
 
         document.getElementById('blur-height').addEventListener('input', function() {
             document.getElementById('blur-height-value').textContent = this.value;
-            requestAnimationFrame(updateBlurPreview);
+            updateBlurPreview();
         });
 
+        // Function to update the blur preview
         function updateBlurPreview() {
             if (!imgLoaded) return;
 
@@ -228,6 +249,7 @@
             ctx.strokeRect(startX, startY, blurWidth, blurHeight);
         }
 
+        // Event listeners for dragging the blur preview
         document.getElementById('blur-preview').addEventListener('mousedown', function(event) {
             isDragging = true;
             startX = event.clientX;
@@ -243,7 +265,7 @@
                 offsetY -= dy;
                 startX = event.clientX;
                 startY = event.clientY;
-                requestAnimationFrame(updateBlurPreview);
+                updateBlurPreview();
             }
         });
 
@@ -252,6 +274,7 @@
             document.getElementById('blur-preview').style.cursor = 'grab';
         });
 
+        // Event listener for clearing blur regions
         document.getElementById('clear-blur-regions-btn').addEventListener('click', function() {
             const blurRegions = document.getElementsByClassName('blur-region');
             while (blurRegions.length > 0) {
@@ -259,6 +282,7 @@
             }
         });
 
+        // Event listener for form submission to save the card
         document.getElementById('create-card-form').addEventListener('submit', function(event) {
             event.preventDefault();
             const generatedImage = document.getElementById('generated-image').src;
