@@ -25,12 +25,13 @@
 
         async function fetchCard(index) {
             try {
-                const response = await fetch(`/get-card/${index}`);
                 console.log(`Fetching card at index ${index}`); // Debugging line
+                const response = await fetch(`/get-card/${index}`);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const card = await response.json();
+                console.log('Fetched card:', card); // Debugging line
                 displayCard(card);
             } catch (error) {
                 console.error('Error fetching card:', error);

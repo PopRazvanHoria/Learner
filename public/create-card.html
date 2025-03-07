@@ -12,10 +12,22 @@
         }
         .blur-region {
             position: absolute;
+            border: 2px dashed #000;
             background: rgba(255, 255, 255, 0.8);
         }
         #generated-image-container {
             position: relative;
+        }
+        .slider-container {
+            margin-top: 10px;
+            display: none; /* Initially hidden */
+        }
+        #blur-preview {
+            border: 1px solid #000;
+            margin-top: 10px;
+            width: 200px;
+            height: 200px;
+            display: none; /* Initially hidden */
         }
     </style>
 </head>
@@ -39,6 +51,17 @@
         <div id="generated-image-container">
             <img id="generated-image" src="" alt="Generated Image">
         </div>
+        <div class="slider-container" id="blur-width-container">
+            <label for="blur-width">Blur Width:</label>
+            <input type="range" id="blur-width" name="blur-width" min="10" max="200" value="50">
+            <span id="blur-width-value">50</span>px
+        </div>
+        <div class="slider-container" id="blur-height-container">
+            <label for="blur-height">Blur Height:</label>
+            <input type="range" id="blur-height" name="blur-height" min="10" max="200" value="50">
+            <span id="blur-height-value">50</span>px
+        </div>
+        <canvas id="blur-preview" width="200" height="200"></canvas>
         <button type="button" id="clear-blur-regions-btn">Clear Blur Regions</button>
         <button type="submit">Create Card</button>
     </form>
@@ -67,12 +90,52 @@
             ctx.font = '20px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(textContent, canvas.width / 2, canvas.height / 2);
+
+            const maxWidth = canvas.width - 20; // Padding of 10px on each side
+            const lineHeight = 24; // Line height for the text
+            const x = canvas.width / 2;
+            const y = canvas.height / 2;
+
+            wrapText(ctx, textContent, x, y, maxWidth, lineHeight);
+
             const dataURL = canvas.toDataURL();
             const generatedImage = document.getElementById('generated-image');
             generatedImage.src = dataURL;
             generatedImage.style.display = 'block';
+
+            // Show the blur preview and sliders
+            document.getElementById('blur-preview').style.display = 'block';
+            document.getElementById('blur-width-container').style.display = 'block';
+            document.getElementById('blur-height-container').style.display = 'block';
+            updateBlurPreview();
         });
+
+        function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+            const words = text.split(' ');
+            let line = '';
+            let testLine = '';
+            let testWidth = 0;
+            let lines = [];
+            for (let n = 0; n < words.length; n++) {
+                testLine = line + words[n] + ' ';
+                testWidth = ctx.measureText(testLine).width;
+                if (testWidth > maxWidth && n > 0) {
+                    lines.push(line);
+                    line = words[n] + ' ';
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line);
+
+            const totalHeight = lines.length * lineHeight;
+            let startY = y - totalHeight / 2;
+
+            for (let i = 0; i < lines.length; i++) {
+                ctx.fillText(lines[i], x, startY);
+                startY += lineHeight;
+            }
+        }
 
         document.getElementById('image-content').addEventListener('change', function(event) {
             const file = event.target.files[0];
@@ -81,38 +144,77 @@
                 const generatedImage = document.getElementById('generated-image');
                 generatedImage.src = e.target.result;
                 generatedImage.style.display = 'block';
+
+                // Show the blur preview and sliders
+                document.getElementById('blur-preview').style.display = 'block';
+                document.getElementById('blur-width-container').style.display = 'block';
+                document.getElementById('blur-height-container').style.display = 'block';
+                updateBlurPreview();
             };
             reader.readAsDataURL(file);
         });
 
         document.getElementById('generated-image').addEventListener('click', function(event) {
             const rect = this.getBoundingClientRect();
-            const blurRegionSize = 50;
-            const x = event.clientX - rect.left - blurRegionSize / 2;
-            const y = event.clientY - rect.top - blurRegionSize / 2;
-            const blurRegion = document.createElement('canvas');
+            const blurWidth = parseInt(document.getElementById('blur-width').value);
+            const blurHeight = parseInt(document.getElementById('blur-height').value);
+            const x = event.clientX - rect.left - blurWidth / 2;
+            const y = event.clientY - rect.top - blurHeight / 2;
+            const blurRegion = document.createElement('div');
             blurRegion.className = 'blur-region';
             blurRegion.style.left = `${x}px`;
             blurRegion.style.top = `${y}px`;
-            blurRegion.style.width = `${blurRegionSize}px`;
-            blurRegion.style.height = `${blurRegionSize}px`;
-            blurRegion.width = blurRegionSize;
-            blurRegion.height = blurRegionSize;
-            addNoise(blurRegion);
+            blurRegion.style.width = `${blurWidth}px`;
+            blurRegion.style.height = `${blurHeight}px`;
             document.getElementById('generated-image-container').appendChild(blurRegion);
         });
 
-        function addNoise(canvas) {
-            const ctx = canvas.getContext('2d');
-            const blockSize = 10; // Size of each pixel block
-            for (let y = 0; y < canvas.height; y += blockSize) {
-                for (let x = 0; x < canvas.width; x += blockSize) {
-                    const red = Math.random() * 128 + 64; // Lower saturation
-                    const green = Math.random() * 128 + 64; // Lower saturation
-                    const blue = Math.random() * 128 + 64; // Lower saturation
-                    ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
-                    ctx.fillRect(x, y, blockSize, blockSize);
-                }
+        document.getElementById('blur-width').addEventListener('input', function() {
+            document.getElementById('blur-width-value').textContent = this.value;
+            requestAnimationFrame(updateBlurPreview);
+        });
+
+        document.getElementById('blur-height').addEventListener('input', function() {
+            document.getElementById('blur-height-value').textContent = this.value;
+            requestAnimationFrame(updateBlurPreview);
+        });
+
+        function updateBlurPreview() {
+            const blurWidth = document.getElementById('blur-width').value;
+            const blurHeight = document.getElementById('blur-height').value;
+            const previewCanvas = document.getElementById('blur-preview');
+            const ctx = previewCanvas.getContext('2d');
+            const centerX = previewCanvas.width / 2;
+            const centerY = previewCanvas.height / 2;
+            const startX = centerX - blurWidth / 2;
+            const startY = centerY - blurHeight / 2;
+            ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
+
+            // Add a snippet of the created card as the background
+            const generatedImage = document.getElementById('generated-image');
+            if (generatedImage.src) {
+                const img = new Image();
+                img.src = generatedImage.src;
+                img.onload = function() {
+                    const snippetWidth = Math.min(img.width, previewCanvas.width);
+                    const snippetHeight = Math.min(img.height, previewCanvas.height);
+                    const snippetX = (img.width - snippetWidth) / 2;
+                    const snippetY = (img.height - snippetHeight) / 2;
+                    ctx.drawImage(img, snippetX, snippetY, snippetWidth, snippetHeight, 0, 0, previewCanvas.width, previewCanvas.height);
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.fillRect(startX, startY, blurWidth, blurHeight);
+                    ctx.strokeStyle = '#000';
+                    ctx.setLineDash([5, 3]);
+                    ctx.strokeRect(startX, startY, blurWidth, blurHeight);
+                };
+            } else {
+                // Add piglatin text as the background
+                ctx.fillStyle = '#000';
+                ctx.font = '16px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const piglatinText = 'Igpay Atinlay Extextay'; // Example piglatin text
+                ctx.fillText(piglatinText, centerX, centerY);
             }
         }
 
@@ -156,6 +258,10 @@
                 document.getElementById('generated-image').style.display = 'none';
                 document.getElementById('generated-image').src = '';
                 document.getElementById('clear-blur-regions-btn').click();
+
+                // Show the blur preview
+                document.getElementById('blur-preview').style.display = 'block';
+                updateBlurPreview();
             })
             .catch(error => {
                 console.error('Error saving card:', error);
@@ -173,6 +279,9 @@
         .catch(error => {
             console.error('Error creating test folder:', error);
         });
+
+        // Initial update of the blur preview
+        updateBlurPreview();
     </script>
 </body>
 </html>

@@ -77,14 +77,10 @@ app.get('/get-cards', (req, res) => {
     });
 });
 
-app.get('/get-card/:index', (req, res) => {
+app.get('/get-card/:index', async (req, res) => {
     const cardsDir = path.join(__dirname, 'cards');
-    fs.readdir(cardsDir, (err, files) => {
-        if (err) {
-            console.error('Error reading cards directory:', err);
-            return res.status(500).json({ error: 'Error reading cards directory', details: err.message });
-        }
-
+    try {
+        const files = await fs.readdir(cardsDir);
         const cardFiles = files.filter(file => file.endsWith('.png'));
         const index = parseInt(req.params.index, 10);
 
@@ -94,15 +90,14 @@ app.get('/get-card/:index', (req, res) => {
 
         const file = cardFiles[index];
         const metadataPath = path.join(cardsDir, `${file}.json`);
-        try {
-            const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
-            metadata.imagePath = `/cards/${file}`;
-            res.json(metadata);
-        } catch (readErr) {
-            console.error('Error reading card metadata file:', readErr);
-            res.status(500).json({ error: 'Error reading card metadata file', details: readErr.message });
-        }
-    });
+        console.log('Fetching card file:', file); // Debugging line
+        const metadata = JSON.parse(await fs.readFile(metadataPath, 'utf8'));
+        metadata.imagePath = `/cards/${file}`;
+        res.json(metadata);
+    } catch (err) {
+        console.error('Error reading cards directory:', err);
+        res.status(500).json({ error: 'Error reading cards directory', details: err.message });
+    }
 });
 
 app.post('/update-card', (req, res) => {
@@ -119,15 +114,16 @@ app.post('/update-card', (req, res) => {
 });
 
 app.post('/create-test-folder', (req, res) => {
+    const fsSync = require('fs'); // Use the synchronous fs module
     const testFolderPath = path.join(__dirname, 'test-folder');
     const testFilePath = path.join(testFolderPath, 'test-file.txt');
 
     // Ensure the test folder exists
-    if (!fs.existsSync(testFolderPath)) {
-        fs.mkdirSync(testFolderPath);
+    if (!fsSync.existsSync(testFolderPath)) {
+        fsSync.mkdirSync(testFolderPath);
     }
 
-    fs.writeFile(testFilePath, 'This is a test file.', (err) => {
+    fsSync.writeFile(testFilePath, 'This is a test file.', (err) => {
         if (err) {
             console.error('Error creating test file:', err);
             return res.status(500).json({ error: 'Error creating test file', details: err.message });
