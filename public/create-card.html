@@ -31,7 +31,7 @@
             display: none; /* Initially hidden */
             cursor: grab;
         }
-        #clear-blur-regions-btn, #create-card-btn {
+        #clear-blur-regions-btn, #create-card-btn, #undo-blur-region-btn {
             display: none; /* Initially hidden */
         }
     </style>
@@ -75,7 +75,8 @@
         <!-- Canvas for blur preview -->
         <canvas id="blur-preview" width="200" height="200"></canvas>
         <!-- Buttons for clearing blur regions and creating the card -->
-        <button type="button" id="clear-blur-regions-btn">Clear Blur Regions</button>
+        <button type="button" id="clear-blur-regions-btn">Clear All Blur Regions</button>
+        <button type="button" id="undo-blur-region-btn">Undo Last Blur Region</button>
         <button type="submit" id="create-card-btn">Create Card</button>
     </form>
     <script>
@@ -129,6 +130,7 @@
             document.getElementById('blur-width-container').style.display = 'block';
             document.getElementById('blur-height-container').style.display = 'block';
             document.getElementById('clear-blur-regions-btn').style.display = 'block';
+            document.getElementById('undo-blur-region-btn').style.display = 'block';
             document.getElementById('create-card-btn').style.display = 'block';
 
             img.src = dataURL;
@@ -180,6 +182,7 @@
                 document.getElementById('blur-width-container').style.display = 'block';
                 document.getElementById('blur-height-container').style.display = 'block';
                 document.getElementById('clear-blur-regions-btn').style.display = 'block';
+                document.getElementById('undo-blur-region-btn').style.display = 'block';
                 document.getElementById('create-card-btn').style.display = 'block';
 
                 img.src = e.target.result;
@@ -196,12 +199,30 @@
             const rect = this.getBoundingClientRect();
             const blurWidth = parseInt(document.getElementById('blur-width').value);
             const blurHeight = parseInt(document.getElementById('blur-height').value);
-            let x = event.clientX - rect.left - blurWidth / 2;
-            let y = event.clientY - rect.top - blurHeight / 2;
+            const borderWidth = 2; // Border width of the blur region
+            let x = event.clientX - rect.left - blurWidth / 2 - borderWidth;
+            let y = event.clientY - rect.top - blurHeight / 2 - borderWidth;
+
+            // Debugging statements to check the values
+            console.log('ClientX:', event.clientX, 'ClientY:', event.clientY);
+            console.log('Rect:', rect);
+            console.log('BlurWidth:', blurWidth, 'BlurHeight:', blurHeight);
+            console.log('Calculated X:', x, 'Calculated Y:', y);
 
             // Ensure the blur region is within the image boundaries
-            x = Math.max(0, Math.min(x, rect.width - blurWidth));
-            y = Math.max(0, Math.min(y, rect.height - blurHeight));
+            if (x < 0) {
+                x = 0;
+            } else if (x + blurWidth + borderWidth * 2 > rect.width) {
+                x = rect.width - blurWidth - borderWidth * 2;
+            }
+
+            if (y < 0) {
+                y = 0;
+            } else if (y + blurHeight + borderWidth * 2 > rect.height) {
+                y = rect.height - blurHeight - borderWidth * 2;
+            }
+
+            console.log('Constrained X:', x, 'Constrained Y:', y);
 
             const blurRegion = document.createElement('div');
             blurRegion.className = 'blur-region';
@@ -210,6 +231,9 @@
             blurRegion.style.width = `${blurWidth}px`;
             blurRegion.style.height = `${blurHeight}px`;
             document.getElementById('generated-image-container').appendChild(blurRegion);
+
+            // Log the dimensions of the blur region
+            console.log(`Blur Region - Left: ${x}px, Top: ${y}px, Width: ${blurWidth}px, Height: ${blurHeight}px`);
         });
 
         // Event listeners for blur width and height sliders
@@ -279,6 +303,14 @@
             const blurRegions = document.getElementsByClassName('blur-region');
             while (blurRegions.length > 0) {
                 blurRegions[0].parentNode.removeChild(blurRegions[0]);
+            }
+        });
+
+        // Event listener for undoing the last blur region
+        document.getElementById('undo-blur-region-btn').addEventListener('click', function() {
+            const blurRegions = document.getElementsByClassName('blur-region');
+            if (blurRegions.length > 0) {
+                blurRegions[blurRegions.length - 1].parentNode.removeChild(blurRegions[blurRegions.length - 1]);
             }
         });
 
