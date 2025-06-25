@@ -143,21 +143,20 @@
         // Function to wrap text within the canvas
         function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
             const words = text.split(' ');
-            let line = '';
-            let testLine = '';
-            let testWidth = 0;
             let lines = [];
-            for (let n = 0; n < words.length; n++) {
-                testLine = line + words[n] + ' ';
-                testWidth = ctx.measureText(testLine).width;
-                if (testWidth > maxWidth && n > 0) {
-                    lines.push(line);
-                    line = words[n] + ' ';
+            let currentLine = '';
+
+            for (let i = 0; i < words.length; i++) {
+                const testLine = currentLine + words[i] + ' ';
+                const testWidth = ctx.measureText(testLine).width;
+                if (testWidth > maxWidth && currentLine !== '') {
+                    lines.push(currentLine);
+                    currentLine = words[i] + ' ';
                 } else {
-                    line = testLine;
+                    currentLine = testLine;
                 }
             }
-            lines.push(line);
+            lines.push(currentLine);
 
             const totalHeight = lines.length * lineHeight;
             let startY = y - totalHeight / 2;

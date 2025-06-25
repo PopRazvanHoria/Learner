@@ -20,6 +20,7 @@
         <!-- Cards will be dynamically loaded here -->
     </div>
     <button id="next-card-btn">Next Card</button>
+    <button id="start-over-btn">Start Over</button>
     <script>
         let currentIndex = 0;
 
@@ -83,7 +84,13 @@
             fetchCard(currentIndex);
         }
 
+        function startOver() {
+            currentIndex = 0;
+            fetchCard(currentIndex);
+        }
+
         document.getElementById('next-card-btn').addEventListener('click', nextCard);
+        document.getElementById('start-over-btn').addEventListener('click', startOver);
 
         fetchCard(currentIndex);
     </script>
