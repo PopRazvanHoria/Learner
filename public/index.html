@@ -4,15 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Learning App</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Welcome to the Learning App</h1>
-    <nav>
-        <ul>
-            <li><a href="create-card.html">Create Card</a></li>
-            <li><a href="learn-cards.html">Learn Cards</a></li>
-            <li><a href="test-cards.html">Test on Cards</a></li>
-        </ul>
-    </nav>
+    <div class="index-shell app-card">
+        <div class="app-card-inner">
+            <header class="index-header">
+                <div>
+                    <div class="index-title">Learner</div>
+                    <div class="index-tagline">Turn your own material into focused flashcards.</div>
+                </div>
+                <div class="badge">
+                    <span class="badge-dot"></span>
+                    <span>Local study workspace</span>
+                </div>
+            </header>
+
+            <section class="nav-grid">
+                <a class="nav-card" href="create-card.html">
+                    <div class="nav-label">Create cards</div>
+                    <div class="nav-description">Paste notes or upload slides to generate new cards.</div>
+                    <span class="nav-pill">Authoring</span>
+                </a>
+
+                <a class="nav-card" href="learn-cards.html">
+                    <div class="nav-label">Learn mode</div>
+                    <div class="nav-description">Step through cards at your own pace.</div>
+                    <span class="nav-pill">Review</span>
+                </a>
+
+                <a class="nav-card" href="test-cards.html">
+                    <div class="nav-label">Test yourself</div>
+                    <div class="nav-description">Hide answers and quiz yourself on what you know.</div>
+                    <span class="nav-pill">Recall</span>
+                </a>
+            </section>
+
+            <p class="index-footer-text">Your content stays local on this machine; cards are stored as simple files.</p>
+        </div>
+    </div>
 </body>
 </html>

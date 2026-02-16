@@ -4,41 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Card</title>
-    <style>
-        /* Styles for the generated image and blur regions */
-        #generated-image {
-            border: 1px solid #000;
-            display: none;
-            position: relative;
-        }
-        .blur-region {
-            position: absolute;
-            border: 2px dashed #000;
-            background: rgba(255, 255, 255, 0.8);
-        }
-        #generated-image-container {
-            position: relative;
-        }
-        .slider-container {
-            margin-top: 10px;
-            display: none; /* Initially hidden */
-        }
-        #blur-preview {
-            border: 1px solid #000;
-            margin-top: 10px;
-            width: 200px;
-            height: 200px;
-            display: none; /* Initially hidden */
-            cursor: grab;
-        }
-        #clear-blur-regions-btn, #create-card-btn, #undo-blur-region-btn {
-            display: none; /* Initially hidden */
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Create a New Card</h1>
-    <form id="create-card-form">
+    <main class="main-shell">
+        <section class="app-card">
+            <div class="app-card-inner">
+                <nav class="top-nav" aria-label="Main navigation">
+                    <a class="top-nav-link" href="index.html">Home</a>
+                    <a class="top-nav-link active" href="create-card.html">Create cards</a>
+                    <a class="top-nav-link" href="learn-cards.html">Learn mode</a>
+                    <a class="top-nav-link" href="test-cards.html">Test yourself</a>
+                </nav>
+
+                <header class="app-header">
+                    <div>
+                        <div class="app-title">Create a new card</div>
+                        <div class="app-subtitle">Generate flashcards from your own text, PDFs or slides.</div>
+                    </div>
+                    <span class="badge"><span class="badge-dot"></span>Draft workspace</span>
+                </header>
+
+                <form id="create-card-form">
         <!-- Card type selection -->
         <label for="card-type">Card Type:</label>
         <select id="card-type" name="card-type">
@@ -47,44 +34,287 @@
         </select>
         <!-- Text card input section -->
         <div id="text-card-input">
-            <label for="text-content">Text Content:</label>
-            <textarea id="text-content" name="text-content"></textarea>
-            <button type="button" id="generate-image-btn">Generate Image</button>
+            <label for="text-content">Text content</label>
+            <textarea id="text-content" name="text-content" placeholder="Paste lecture notes, a short explanation, or a definition you want to remember."></textarea>
+            <div class="chip-row">
+                <span class="chip">Tip: aim for one idea per card.</span>
+            </div>
+            <div style="margin-top: 8px; display:flex; flex-wrap:wrap; gap:6px;">
+                <button type="button" id="generate-image-btn" class="primary-btn">Generate card image</button>
+                <button type="button" id="fact-check-btn" class="subtle-btn">Quick fact check</button>
+                <button type="button" id="extract-facts-btn" class="subtle-btn">Extract facts from text</button>
+            </div>
+            <div style="margin-top: 8px;">
+                <label for="source-file">Upload source file (PDF/TXT/MD/PPTX)</label>
+                <input type="file" id="source-file" accept=".pdf,.txt,.md,.markdown,.csv,.tsv,.json,.pptx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation">
+                <button type="button" id="extract-facts-file-btn" class="subtle-btn">Extract facts from file</button>
+                <p class="helper-text">We pull out candidate facts from your document so you can turn them into cards.</p>
+            </div>
+            <div id="fact-check-result"></div>
+            <div id="extracted-facts"></div>
         </div>
         <!-- Image card input section -->
         <div id="image-card-input" style="display: none;">
             <label for="image-content">Image Content:</label>
             <input type="file" id="image-content" name="image-content">
         </div>
-        <!-- Container for the generated image -->
-        <div id="generated-image-container">
-            <img id="generated-image" src="" alt="Generated Image">
+        <!-- Blur editor modal (initially hidden) -->
+        <div id="blur-modal" class="blur-modal">
+            <div class="blur-modal-panel">
+                <header class="blur-modal-header">
+                    <div>
+                        <div class="blur-modal-title">Add blur regions</div>
+                        <p class="helper-text">Click on the image to place blurred rectangles over answers or key details.</p>
+                    </div>
+                    <button type="button" id="blur-modal-close-btn" class="subtle-btn">Done</button>
+                </header>
+
+                <div class="blur-modal-body">
+                    <!-- Left: blur controls -->
+                    <div class="blur-controls-col">
+                        <div class="slider-container" id="blur-width-container">
+                            <label for="blur-width">Blur width</label>
+                            <input type="range" id="blur-width" name="blur-width" min="10" max="200" value="100">
+                            <span id="blur-width-value">100</span>px
+                        </div>
+                        <div class="slider-container" id="blur-height-container">
+                            <label for="blur-height">Blur height</label>
+                            <input type="range" id="blur-height" name="blur-height" min="10" max="200" value="24">
+                            <span id="blur-height-value">24</span>px
+                        </div>
+
+                        <div style="margin-top:8px;">
+                            <div class="preview-heading">Preview of blur box size</div>
+                            <canvas id="blur-preview" width="200" height="200"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Right: image -->
+                    <div class="blur-image-col">
+                        <div class="generated-shell" style="margin-top:4px;">
+                            <div class="preview-heading">Card image</div>
+                            <div id="generated-image-container">
+                                <img id="generated-image" src="" alt="Generated Image">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Buttons for clearing blur regions and creating the card -->
+                <div style="margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; justify-content:space-between; align-items:center;">
+                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                        <button type="button" id="clear-blur-regions-btn" class="subtle-btn">Clear all blur regions</button>
+                        <button type="button" id="undo-blur-region-btn" class="subtle-btn">Undo last blur</button>
+                    </div>
+                    <button type="submit" id="create-card-btn" class="primary-btn">Save card</button>
+                </div>
+            </div>
         </div>
-        <!-- Blur width slider -->
-        <div class="slider-container" id="blur-width-container">
-            <label for="blur-width">Blur Width:</label>
-            <input type="range" id="blur-width" name="blur-width" min="10" max="200" value="100">
-            <span id="blur-width-value">100</span>px
-        </div>
-        <!-- Blur height slider -->
-        <div class="slider-container" id="blur-height-container">
-            <label for="blur-height">Blur Height:</label>
-            <input type="range" id="blur-height" name="blur-height" min="10" max="200" value="24">
-            <span id="blur-height-value">24</span>px
-        </div>
-        <!-- Canvas for blur preview -->
-        <canvas id="blur-preview" width="200" height="200"></canvas>
-        <!-- Buttons for clearing blur regions and creating the card -->
-        <button type="button" id="clear-blur-regions-btn">Clear All Blur Regions</button>
-        <button type="button" id="undo-blur-region-btn">Undo Last Blur Region</button>
-        <button type="submit" id="create-card-btn">Create Card</button>
-    </form>
+
+        </form>
+            </div>
+        </section>
+
+        <section class="app-card">
+            <div class="app-card-inner">
+                <div class="section-title">Advanced extraction settings</div>
+                <div class="section-block">
+                    <label for="setting-max-facts">Max facts</label>
+                    <input type="range" id="setting-max-facts" min="3" max="24" value="12">
+                    <div class="helper-text">Current: <span id="setting-max-facts-value">12</span></div>
+                </div>
+
+                <div class="section-block">
+                    <label>
+                        <input type="checkbox" id="setting-fast-mode">
+                        Fast mode (skip LLM, quicker extraction)
+                    </label>
+                    <p class="helper-text">Useful for large files or when you want immediate results.</p>
+                </div>
+
+                <div class="section-block">
+                    <label>
+                        <input type="checkbox" id="setting-include-preview" checked>
+                        Include source preview snippets
+                    </label>
+                    <p class="helper-text">Turn this off for a cleaner, shorter extracted-facts list.</p>
+                </div>
+
+                <div class="section-block">
+                    <label for="setting-min-words">Min words per fact</label>
+                    <input type="range" id="setting-min-words" min="4" max="20" value="8">
+                    <div class="helper-text">Current: <span id="setting-min-words-value">8</span></div>
+
+                    <label for="setting-max-words" style="margin-top:8px;">Max words per fact</label>
+                    <input type="range" id="setting-max-words" min="8" max="40" value="22">
+                    <div class="helper-text">Current: <span id="setting-max-words-value">22</span></div>
+                </div>
+            </div>
+        </section>
+    </main>
     <script>
         let isDragging = false;
         let startX, startY;
         let offsetX = 0, offsetY = 0;
         let img = new Image();
         let imgLoaded = false;
+        let maxUploadMb = 50;
+
+        function openBlurModal() {
+            const modal = document.getElementById('blur-modal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeBlurModal() {
+            const modal = document.getElementById('blur-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function parseErrorResponse(response) {
+            return response.text().then(bodyText => {
+                let parsedJson = null;
+                try {
+                    parsedJson = JSON.parse(bodyText);
+                } catch (parseErr) {
+                    const compact = (bodyText || '').replace(/\s+/g, ' ').trim();
+                    throw new Error(compact || `Request failed with status ${response.status}`);
+                }
+
+                throw new Error(parsedJson.details || parsedJson.error || 'Unknown error');
+            });
+        }
+
+        function getFactExtractionSettings() {
+            const maxFacts = Number(document.getElementById('setting-max-facts').value || 12);
+            const fastMode = document.getElementById('setting-fast-mode').checked;
+            const includeSourcePreview = document.getElementById('setting-include-preview').checked;
+            const minFactWords = Number(document.getElementById('setting-min-words').value || 8);
+            const maxFactWords = Number(document.getElementById('setting-max-words').value || 22);
+
+            return {
+                maxFacts,
+                fastMode,
+                includeSourcePreview,
+                minFactWords,
+                maxFactWords
+            };
+        }
+
+        function renderExtractedFacts(extractedFactsDiv, data, defaultFileName = null) {
+            const rawFacts = Array.isArray(data.facts) ? data.facts : [];
+            const enrichedFacts = Array.isArray(data.enrichedFacts)
+                ? data.enrichedFacts
+                    .map(item => ({
+                        fact: String(item?.fact || '').trim(),
+                        category: String(item?.category || '').trim(),
+                        context: String(item?.context || '').trim(),
+                        sourcePreview: String(item?.sourcePreview || '').trim()
+                    }))
+                    .filter(item => item.fact)
+                : [];
+
+            const items = enrichedFacts.length > 0
+                ? enrichedFacts
+                : rawFacts.map(fact => ({ fact: String(fact || '').trim(), category: '', context: '', sourcePreview: '' })).filter(item => item.fact);
+
+            if (items.length === 0) {
+                extractedFactsDiv.textContent = defaultFileName ? 'No facts extracted from file.' : 'No facts extracted.';
+                return;
+            }
+
+            extractedFactsDiv.innerHTML = '';
+
+            const sourceLabel = document.createElement('div');
+            sourceLabel.textContent = defaultFileName
+                ? `Source: ${data.source || 'unknown'} | File: ${data.fileName || defaultFileName}`
+                : `Source: ${data.source || 'unknown'}`;
+            extractedFactsDiv.appendChild(sourceLabel);
+
+            if (typeof data.chars === 'number') {
+                const charsDiv = document.createElement('div');
+                charsDiv.textContent = `Extracted text length: ${data.chars} chars`;
+                extractedFactsDiv.appendChild(charsDiv);
+            }
+
+            if (data.note) {
+                const noteDiv = document.createElement('div');
+                noteDiv.textContent = data.note;
+                extractedFactsDiv.appendChild(noteDiv);
+            }
+
+            const images = Array.isArray(data.images) ? data.images : [];
+            if (images.length > 0) {
+                const imagesLabel = document.createElement('div');
+                imagesLabel.textContent = 'Extracted images / figures:';
+                extractedFactsDiv.appendChild(imagesLabel);
+
+                const imagesContainer = document.createElement('div');
+                imagesContainer.className = 'extracted-images-container';
+
+                images.forEach((image, index) => {
+                    if (!image || (!image.url && !image.dataUrl)) {
+                        return;
+                    }
+
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'extracted-image-item';
+
+                    const imgEl = document.createElement('img');
+                    imgEl.src = image.url || image.dataUrl;
+                    imgEl.alt = image.originalName || `Extracted image ${index + 1}`;
+                    imgEl.style.maxWidth = '180px';
+                    imgEl.style.maxHeight = '120px';
+                    imgEl.style.margin = '4px';
+                    imgEl.style.objectFit = 'contain';
+
+                    wrapper.appendChild(imgEl);
+                    imagesContainer.appendChild(wrapper);
+                });
+
+                extractedFactsDiv.appendChild(imagesContainer);
+            }
+
+            items.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'extracted-fact-item';
+
+                const main = document.createElement('div');
+                main.className = 'fact-main';
+                main.textContent = `${index + 1}. ${item.fact}`;
+                row.appendChild(main);
+
+                if (item.category) {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'fact-meta';
+                    categoryDiv.textContent = `Category: ${item.category}`;
+                    row.appendChild(categoryDiv);
+                }
+
+                if (item.sourcePreview) {
+                    const previewDiv = document.createElement('div');
+                    previewDiv.className = 'fact-preview';
+                    previewDiv.textContent = `Source preview: ${item.sourcePreview}`;
+                    row.appendChild(previewDiv);
+                }
+
+                const useBtn = document.createElement('button');
+                useBtn.type = 'button';
+                useBtn.className = 'use-fact-btn';
+                useBtn.textContent = 'Use this fact';
+                useBtn.addEventListener('click', function() {
+                    document.getElementById('text-content').value = item.fact;
+                    // Immediately generate an image from this fact and open the blur editor
+                    document.getElementById('generate-image-btn').click();
+                });
+
+                row.appendChild(useBtn);
+                extractedFactsDiv.appendChild(row);
+            });
+        }
 
         // Event listener for card type selection
         document.getElementById('card-type').addEventListener('change', function() {
@@ -96,6 +326,153 @@
             } else {
                 textCardInput.style.display = 'none';
                 imageCardInput.style.display = 'block';
+            }
+        });
+
+        // Event listener for fact checking the text content
+        document.getElementById('fact-check-btn').addEventListener('click', function() {
+            const textContent = document.getElementById('text-content').value.trim();
+            const resultDiv = document.getElementById('fact-check-result');
+
+            if (!textContent) {
+                resultDiv.textContent = 'Enter some text to fact check.';
+                return;
+            }
+
+            resultDiv.textContent = 'Checking facts...';
+
+            fetch('/fact-check', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text: textContent })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return parseErrorResponse(response);
+                }
+                return response.json();
+            })
+            .then(data => {
+                let output = '';
+                if (data.verdict) {
+                    output += `Verdict: ${data.verdict}`;
+                }
+                if (data.summary) {
+                    output += (output ? '\n' : '') + data.summary;
+                }
+                if (data.warnings && Array.isArray(data.warnings) && data.warnings.length > 0) {
+                    output += (output ? '\n' : '') + 'Warnings:';
+                    data.warnings.forEach(w => {
+                        output += `\n- ${w}`;
+                    });
+                }
+                resultDiv.textContent = output || 'No details returned by fact checker.';
+            })
+            .catch(error => {
+                console.error('Error during fact check:', error);
+                resultDiv.textContent = 'Error during fact check.';
+            });
+        });
+
+        document.getElementById('extract-facts-btn').addEventListener('click', function() {
+            const textContent = document.getElementById('text-content').value.trim();
+            const extractedFactsDiv = document.getElementById('extracted-facts');
+            const settings = getFactExtractionSettings();
+
+            if (!textContent) {
+                extractedFactsDiv.textContent = 'Enter some text to extract facts.';
+                return;
+            }
+
+            extractedFactsDiv.textContent = 'Extracting facts...';
+
+            fetch('/extract-facts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ text: textContent, settings })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return parseErrorResponse(response);
+                }
+                return response.json();
+            })
+            .then(data => {
+                renderExtractedFacts(extractedFactsDiv, data);
+            })
+            .catch(error => {
+                console.error('Error extracting facts:', error);
+                extractedFactsDiv.textContent = 'Error extracting facts.';
+            });
+        });
+
+        document.getElementById('extract-facts-file-btn').addEventListener('click', function() {
+            const fileInput = document.getElementById('source-file');
+            const extractedFactsDiv = document.getElementById('extracted-facts');
+            const file = fileInput.files[0];
+            const settings = getFactExtractionSettings();
+
+            if (!file) {
+                extractedFactsDiv.textContent = 'Select a PDF or text file first.';
+                return;
+            }
+
+            const maxBytes = maxUploadMb * 1024 * 1024;
+            if (file.size > maxBytes) {
+                extractedFactsDiv.textContent = `File too large. Maximum allowed size is ${maxUploadMb}MB.`;
+                return;
+            }
+
+            extractedFactsDiv.textContent = 'Extracting facts from file...';
+
+            const formData = new FormData();
+            formData.append('sourceFile', file);
+            formData.append('settings', JSON.stringify(settings));
+
+            fetch('/extract-facts-file', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return parseErrorResponse(response);
+                }
+                return response.json();
+            })
+            .then(data => {
+                renderExtractedFacts(extractedFactsDiv, data, file.name);
+            })
+            .catch(error => {
+                console.error('Error extracting facts from file:', error);
+                extractedFactsDiv.textContent = `Error extracting facts from file: ${error.message}`;
+            });
+        });
+
+        document.getElementById('setting-max-facts').addEventListener('input', function() {
+            document.getElementById('setting-max-facts-value').textContent = this.value;
+        });
+
+        document.getElementById('setting-min-words').addEventListener('input', function() {
+            document.getElementById('setting-min-words-value').textContent = this.value;
+
+            const maxWordsSlider = document.getElementById('setting-max-words');
+            if (Number(maxWordsSlider.value) < Number(this.value)) {
+                maxWordsSlider.value = this.value;
+                document.getElementById('setting-max-words-value').textContent = maxWordsSlider.value;
+            }
+        });
+
+        document.getElementById('setting-max-words').addEventListener('input', function() {
+            document.getElementById('setting-max-words-value').textContent = this.value;
+
+            const minWordsSlider = document.getElementById('setting-min-words');
+            if (Number(minWordsSlider.value) > Number(this.value)) {
+                minWordsSlider.value = this.value;
+                document.getElementById('setting-min-words-value').textContent = minWordsSlider.value;
             }
         });
 
@@ -125,38 +502,53 @@
             generatedImage.src = dataURL;
             generatedImage.style.display = 'block';
 
-            // Show the blur preview and sliders
-            document.getElementById('blur-preview').style.display = 'block';
-            document.getElementById('blur-width-container').style.display = 'block';
-            document.getElementById('blur-height-container').style.display = 'block';
-            document.getElementById('clear-blur-regions-btn').style.display = 'block';
-            document.getElementById('undo-blur-region-btn').style.display = 'block';
-            document.getElementById('create-card-btn').style.display = 'block';
-
             img.src = dataURL;
             img.onload = function() {
                 imgLoaded = true;
                 updateBlurPreview();
+                openBlurModal();
             };
         });
 
-        // Function to wrap text within the canvas
+        // Function to wrap text within the canvas (handles long lines and newlines)
         function wrapText(ctx, text, x, y, maxWidth, lineHeight) {
-            const words = text.split(' ');
-            let lines = [];
-            let currentLine = '';
+            const paragraphs = text.split('\n');
+            const lines = [];
 
-            for (let i = 0; i < words.length; i++) {
-                const testLine = currentLine + words[i] + ' ';
-                const testWidth = ctx.measureText(testLine).width;
-                if (testWidth > maxWidth && currentLine !== '') {
-                    lines.push(currentLine);
-                    currentLine = words[i] + ' ';
-                } else {
-                    currentLine = testLine;
+            paragraphs.forEach(paragraph => {
+                const words = paragraph.split(' ');
+                let currentLine = '';
+
+                for (let i = 0; i < words.length; i++) {
+                    const word = words[i];
+                    const testLine = currentLine + word + ' ';
+                    const testWidth = ctx.measureText(testLine).width;
+
+                    if (testWidth > maxWidth && currentLine !== '') {
+                        // Current line is full, push it and start a new one
+                        lines.push(currentLine);
+                        currentLine = word + ' ';
+                    } else if (testWidth > maxWidth) {
+                        // Single very long word with no room on an empty line: break word
+                        let remaining = word;
+                        while (ctx.measureText(remaining).width > maxWidth && remaining.length > 1) {
+                            let slice = remaining;
+                            while (ctx.measureText(slice).width > maxWidth && slice.length > 1) {
+                                slice = slice.slice(0, -1);
+                            }
+                            lines.push(slice);
+                            remaining = remaining.slice(slice.length);
+                        }
+                        currentLine = remaining + ' ';
+                    } else {
+                        currentLine = testLine;
+                    }
                 }
-            }
-            lines.push(currentLine);
+
+                if (currentLine.trim() !== '') {
+                    lines.push(currentLine);
+                }
+            });
 
             const totalHeight = lines.length * lineHeight;
             let startY = y - totalHeight / 2;
@@ -176,18 +568,11 @@
                 generatedImage.src = e.target.result;
                 generatedImage.style.display = 'block';
 
-                // Show the blur preview and sliders
-                document.getElementById('blur-preview').style.display = 'block';
-                document.getElementById('blur-width-container').style.display = 'block';
-                document.getElementById('blur-height-container').style.display = 'block';
-                document.getElementById('clear-blur-regions-btn').style.display = 'block';
-                document.getElementById('undo-blur-region-btn').style.display = 'block';
-                document.getElementById('create-card-btn').style.display = 'block';
-
                 img.src = e.target.result;
                 img.onload = function() {
                     imgLoaded = true;
                     updateBlurPreview();
+                    openBlurModal();
                 };
             };
             reader.readAsDataURL(file);
@@ -195,33 +580,26 @@
 
         // Event listener for adding blur regions on the generated image
         document.getElementById('generated-image').addEventListener('click', function(event) {
-            const rect = this.getBoundingClientRect();
+            const container = document.getElementById('generated-image-container');
+            const rect = container.getBoundingClientRect();
             const blurWidth = parseInt(document.getElementById('blur-width').value);
             const blurHeight = parseInt(document.getElementById('blur-height').value);
-            const borderWidth = 2; // Border width of the blur region
-            let x = event.clientX - rect.left - blurWidth / 2 - borderWidth;
-            let y = event.clientY - rect.top - blurHeight / 2 - borderWidth;
 
-            // Debugging statements to check the values
-            console.log('ClientX:', event.clientX, 'ClientY:', event.clientY);
-            console.log('Rect:', rect);
-            console.log('BlurWidth:', blurWidth, 'BlurHeight:', blurHeight);
-            console.log('Calculated X:', x, 'Calculated Y:', y);
+            let x = event.clientX - rect.left - blurWidth / 2;
+            let y = event.clientY - rect.top - blurHeight / 2;
 
-            // Ensure the blur region is within the image boundaries
+            // Ensure the blur region is within the image/container boundaries
             if (x < 0) {
                 x = 0;
-            } else if (x + blurWidth + borderWidth * 2 > rect.width) {
-                x = rect.width - blurWidth - borderWidth * 2;
+            } else if (x + blurWidth > rect.width) {
+                x = rect.width - blurWidth;
             }
 
             if (y < 0) {
                 y = 0;
-            } else if (y + blurHeight + borderWidth * 2 > rect.height) {
-                y = rect.height - blurHeight - borderWidth * 2;
+            } else if (y + blurHeight > rect.height) {
+                y = rect.height - blurHeight;
             }
-
-            console.log('Constrained X:', x, 'Constrained Y:', y);
 
             const blurRegion = document.createElement('div');
             blurRegion.className = 'blur-region';
@@ -229,10 +607,7 @@
             blurRegion.style.top = `${y}px`;
             blurRegion.style.width = `${blurWidth}px`;
             blurRegion.style.height = `${blurHeight}px`;
-            document.getElementById('generated-image-container').appendChild(blurRegion);
-
-            // Log the dimensions of the blur region
-            console.log(`Blur Region - Left: ${x}px, Top: ${y}px, Width: ${blurWidth}px, Height: ${blurHeight}px`);
+            container.appendChild(blurRegion);
         });
 
         // Event listeners for blur width and height sliders
@@ -344,17 +719,20 @@
             })
             .then(data => {
                 // Clear the shown image and blur regions
-                document.getElementById('generated-image').style.display = 'none';
-                document.getElementById('generated-image').src = '';
+                const generatedImageEl = document.getElementById('generated-image');
+                generatedImageEl.style.display = 'none';
+                generatedImageEl.src = '';
                 document.getElementById('clear-blur-regions-btn').click();
-
-                // Show the blur preview
-                document.getElementById('blur-preview').style.display = 'block';
-                updateBlurPreview();
+                closeBlurModal();
             })
             .catch(error => {
                 console.error('Error saving card:', error);
             });
+        });
+
+        // Close blur modal without saving (keeps current blur regions in memory)
+        document.getElementById('blur-modal-close-btn').addEventListener('click', function() {
+            closeBlurModal();
         });
 
         // Test the create-test-folder endpoint
@@ -370,6 +748,15 @@
         });
 
         // Initial update of the blur preview
+        fetch('/upload-config')
+            .then(response => response.ok ? response.json() : null)
+            .then(data => {
+                if (data && Number.isFinite(Number(data.maxUploadMb))) {
+                    maxUploadMb = Number(data.maxUploadMb);
+                }
+            })
+            .catch(() => {});
+
         updateBlurPreview();
     </script>
 </body>

@@ -4,36 +4,94 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Learn Cards</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Learn Cards</h1>
-    <div id="card-container">
-        <!-- Cards will be dynamically loaded here -->
+    <div class="main-shell">
+        <section class="app-card" style="grid-column: 1 / -1;">
+            <div class="app-card-inner">
+                <nav class="top-nav" aria-label="Main navigation">
+                    <a class="top-nav-link" href="index.html">Home</a>
+                    <a class="top-nav-link" href="create-card.html">Create cards</a>
+                    <a class="top-nav-link active" href="learn-cards.html">Learn mode</a>
+                    <a class="top-nav-link" href="test-cards.html">Test yourself</a>
+                </nav>
+
+                <header class="app-header">
+                    <div>
+                        <div class="app-title">Learn cards</div>
+                        <div class="app-subtitle">Move through your deck and get familiar with each card.</div>
+                    </div>
+                </header>
+
+                <div class="card-stage">
+                    <div id="card-container" class="card-stage-main">
+                        <!-- Cards will be dynamically loaded here -->
+                    </div>
+                    <div class="card-stage-actions">
+                        <button id="refresh-btn" class="subtle-btn">Start over</button>
+                        <button id="delete-card-btn" class="subtle-btn">Delete card</button>
+                        <button id="previous-card-btn" class="subtle-btn">Previous card</button>
+                        <button id="next-card-btn" class="primary-btn">Next card</button>
+                    </div>
+                    <p class="info-note">Tip: once a card feels solid, delete it or move on quickly.</p>
+                </div>
+            </div>
+        </section>
     </div>
-    <button id="next-card-btn">Next Card</button>
-    <button id="refresh-btn">Start Over</button>
-    <button id="delete-card-btn">Delete Card</button>
     <script>
         let currentIndex = 0;
+        let currentCardImagePath = '';
+
+        const cardContainer = document.getElementById('card-container');
+        const nextCardBtn = document.getElementById('next-card-btn');
+        const previousCardBtn = document.getElementById('previous-card-btn');
+        const deleteCardBtn = document.getElementById('delete-card-btn');
+        const refreshBtn = document.getElementById('refresh-btn');
+
+        function setEmptyDeckState(isEmpty) {
+            if (isEmpty) {
+                nextCardBtn.style.display = 'none';
+                previousCardBtn.style.display = 'none';
+                deleteCardBtn.style.display = 'none';
+                refreshBtn.classList.remove('subtle-btn');
+                refreshBtn.classList.add('primary-btn');
+                return;
+            }
+
+            nextCardBtn.style.display = '';
+            previousCardBtn.style.display = '';
+            deleteCardBtn.style.display = '';
+            refreshBtn.classList.remove('primary-btn');
+            refreshBtn.classList.add('subtle-btn');
+        }
 
         async function fetchCard(index) {
             try {
                 const response = await fetch(`/get-card/${index}`);
                 console.log(`Fetching card at index ${index}`); // Debugging line
                 if (!response.ok) {
+                    if (response.status === 404) {
+                        setEmptyDeckState(true);
+                        cardContainer.innerHTML = "<p>You've studied all the cards</p>";
+                        return false;
+                    }
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const card = await response.json();
                 displayCard(card);
+                setEmptyDeckState(false);
+                return true;
             } catch (error) {
                 console.error('Error fetching card:', error);
-                document.getElementById('card-container').innerHTML = "<p>You've studied all the cards</p>";
+                cardContainer.innerHTML = "<p>Unable to load cards right now.</p>";
+                return false;
             }
         }
 
         function displayCard(card) {
-            const cardContainer = document.getElementById('card-container');
             console.log('Displaying card:', card); // Debugging line
+            currentCardImagePath = card.imagePath || '';
             cardContainer.innerHTML = `
                 <img src="${card.imagePath}" alt="Card Image" onerror="handleImageError(this)">
             `;
@@ -44,35 +102,53 @@
             img.src = 'placeholder.png'; // Fallback image
         }
 
-        async function deleteCard(index) {
+        async function deleteCard() {
             try {
-                const response = await fetch(`/delete-card/${index}`, {
-                    method: 'DELETE'
+                if (!currentCardImagePath) {
+                    console.error('No current card image path to delete');
+                    return;
+                }
+
+                const response = await fetch('/delete-card-by-path', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ imagePath: currentCardImagePath })
                 });
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const result = await response.json();
                 console.log(result.message); // Debugging line
-                nextCard();
+
+                // After deleting, move to the next card (which now shifts into this index).
+                // If there is no next card, fetchCard will show the finished panel.
+                await fetchCard(currentIndex);
             } catch (error) {
                 console.error('Error deleting card:', error);
             }
         }
 
-        function nextCard() {
+        async function nextCard() {
             currentIndex++;
-            fetchCard(currentIndex);
+            await fetchCard(currentIndex);
         }
 
-        function refreshCards() {
+        async function previousCard() {
+            currentIndex = Math.max(0, currentIndex - 1);
+            await fetchCard(currentIndex);
+        }
+
+        async function refreshCards() {
             currentIndex = 0;
-            fetchCard(currentIndex);
+            await fetchCard(currentIndex);
         }
 
-        document.getElementById('next-card-btn').addEventListener('click', nextCard);
-        document.getElementById('refresh-btn').addEventListener('click', refreshCards);
-        document.getElementById('delete-card-btn').addEventListener('click', () => deleteCard(currentIndex));
+        nextCardBtn.addEventListener('click', nextCard);
+        previousCardBtn.addEventListener('click', previousCard);
+        refreshBtn.addEventListener('click', refreshCards);
+        deleteCardBtn.addEventListener('click', deleteCard);
 
         fetchCard(currentIndex);
     </script>

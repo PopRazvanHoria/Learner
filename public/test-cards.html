@@ -4,23 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Test on Cards</title>
-    <style>
-        .blur-region {
-            position: absolute;
-            background: rgba(255, 255, 255, 0.8);
-        }
-        #card-container {
-            position: relative;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Test on Cards</h1>
-    <div id="card-container">
-        <!-- Cards will be dynamically loaded here -->
+    <div class="main-shell">
+        <section class="app-card" style="grid-column: 1 / -1;">
+            <div class="app-card-inner">
+                <nav class="top-nav" aria-label="Main navigation">
+                    <a class="top-nav-link" href="index.html">Home</a>
+                    <a class="top-nav-link" href="create-card.html">Create cards</a>
+                    <a class="top-nav-link" href="learn-cards.html">Learn mode</a>
+                    <a class="top-nav-link active" href="test-cards.html">Test yourself</a>
+                </nav>
+
+                <header class="app-header">
+                    <div>
+                        <div class="app-title">Test yourself</div>
+                        <div class="app-subtitle">Hide key regions and see what you can recall.</div>
+                    </div>
+                </header>
+
+                <div class="card-stage">
+                    <div id="card-container" class="card-stage-main">
+                        <!-- Cards will be dynamically loaded here -->
+                    </div>
+                    <div class="card-stage-actions">
+                        <button id="start-over-btn" class="subtle-btn">Start over</button>
+                        <button id="next-card-btn" class="primary-btn">Next card</button>
+                    </div>
+                    <p class="info-note">Use the blurred regions as prompts, then reveal the full card image.</p>
+                </div>
+            </div>
+        </section>
     </div>
-    <button id="next-card-btn">Next Card</button>
-    <button id="start-over-btn">Start Over</button>
     <script>
         let currentIndex = 0;
 
@@ -44,11 +60,15 @@
             const cardContainer = document.getElementById('card-container');
             console.log('Displaying card:', card); // Debugging line
             cardContainer.innerHTML = `
-                <img src="${card.imagePath}" alt="Card Image" onerror="handleImageError(this)">
+                <div class="test-image-wrapper" id="test-image-wrapper">
+                    <img src="${card.imagePath}" alt="Card Image" onerror="handleImageError(this)">
+                </div>
             `;
+
+            const imageWrapper = document.getElementById('test-image-wrapper');
             card.blurRegions.forEach(region => {
                 const blurRegion = document.createElement('canvas');
-                blurRegion.className = 'blur-region';
+                blurRegion.className = 'test-blur-region';
                 blurRegion.style.left = region.left;
                 blurRegion.style.top = region.top;
                 blurRegion.style.width = region.width;
@@ -56,7 +76,7 @@
                 blurRegion.width = parseInt(region.width);
                 blurRegion.height = parseInt(region.height);
                 addNoise(blurRegion);
-                cardContainer.appendChild(blurRegion);
+                imageWrapper.appendChild(blurRegion);
             });
         }
 
